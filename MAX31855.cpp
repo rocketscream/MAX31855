@@ -1,7 +1,7 @@
 /*******************************************************************************
 * MAX31855 Library
-* Version: 1.00
-* Date: 26-12-2011
+* Version: 1.10
+* Date: 24-07-2012
 * Company: Rocket Scream Electronics
 * Website: www.rocketscream.com
 *
@@ -14,6 +14,7 @@
 *
 * Revision  Description
 * ========  ===========
+* 1.10			Added negative temperature support for both junction & thermocouple.
 * 1.00      Initial public release.
 *
 *******************************************************************************/
@@ -93,8 +94,26 @@ double	MAX31855::readThermocouple(unit_t	unit)
 	{
 		// Retrieve thermocouple temperature data and strip redundant data
 		data = data >> 18;
+		// Bit-14 is the sign
+		temperature = (data & 0x00001FFF);
+
+		// Check for negative temperature		
+		if (data & 0x00002000)
+		{
+			// 2's complement operation
+			// Invert
+			data = ~data; 
+			// Ensure operation involves lower 13-bit only
+			temperature = data & 0x00001FFF;
+			// Add 1 to obtain the positive number
+			temperature += 1;
+			// Make temperature negative
+			temperature *= -1; 
+		}
+		
 		// Convert to Degree Celsius
-		temperature = data * 0.25;
+		temperature *= 0.25;
+		
 		// If temperature unit in Fahrenheit is desired
 		if (unit == FAHRENHEIT)
 		{
@@ -132,10 +151,25 @@ double	MAX31855::readJunction(unit_t	unit)
 	
 	// Strip fault data bits & reserved bit
 	data = data >> 4;
-	// Remove other redundant data bits
-	data &= 0x00000FFF;
+	// Bit-12 is the sign
+	temperature = (data & 0x000007FF);
+	
+	// Check for negative temperature
+	if (data & 0x00000800)
+	{
+		// 2's complement operation
+		// Invert
+		data = ~data; 
+		// Ensure operation involves lower 11-bit only
+		temperature = data & 0x000007FF;
+		// Add 1 to obtain the positive number
+		temperature += 1;	
+		// Make temperature negative
+		temperature *= -1; 
+	}
+	
 	// Convert to Degree Celsius
-	temperature = data * 0.0625;
+	temperature *= 0.0625;
 	
 	// If temperature unit in Fahrenheit is desired
 	if (unit == FAHRENHEIT)
